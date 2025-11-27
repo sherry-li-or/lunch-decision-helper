@@ -1,12 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CATEGORY_COLORS, INITIAL_FOODS } from './constants';
-import { CategoryType, FoodItem, ViewState } from './types';
-import { HeartIcon, HomeIcon, GridIcon, SparklesIcon, ChevronLeftIcon, TrashIcon } from './components/Icons';
+import { CATEGORY_COLORS, INITIAL_FOODS, SCENARIOS } from './constants';
+import { CategoryType, FoodItem, ViewState, Scenario } from './types';
+import { HeartIcon, HomeIcon, GridIcon, SparklesIcon, ChevronLeftIcon, TrashIcon, MapPinIcon } from './components/Icons';
 import { AIChefView } from './components/AIChefView';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('HOME');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
+  
+  // Generalized list state for both Categories and Scenarios
+  const [activeList, setActiveList] = useState<{
+    title: string;
+    items: FoodItem[];
+    colorTheme?: string;
+  } | null>(null);
+
   const [favorites, setFavorites] = useState<string[]>([]);
   const [foods, setFoods] = useState<FoodItem[]>(INITIAL_FOODS);
 
@@ -30,18 +37,36 @@ const App: React.FC = () => {
   }, []);
 
   const getFavoriteFoods = () => foods.filter(f => favorites.includes(f.id));
-  const getCategoryFoods = (cat: CategoryType) => foods.filter(f => f.category === cat);
+
+  // --- Actions ---
+
+  const handleOpenCategory = (cat: CategoryType) => {
+    setActiveList({
+        title: cat,
+        items: foods.filter(f => f.category === cat),
+    });
+    setView('LIST');
+  };
+
+  const handleOpenScenario = (scenario: Scenario) => {
+    setActiveList({
+        title: scenario.name,
+        items: foods.filter(f => f.tags.includes(scenario.filterTag)),
+        colorTheme: scenario.color
+    });
+    setView('LIST');
+  };
 
   // --- Views ---
 
   const renderHome = () => (
-    <div className="p-4 pb-24 space-y-6">
+    <div className="p-4 pb-24 space-y-8">
       <header className="flex justify-between items-center py-4">
         <div>
            <h1 className="text-2xl font-black text-gray-800">今天午餐吃什麼？</h1>
            <p className="text-gray-500 text-sm">不用煩惱，選一類或問 AI</p>
         </div>
-        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">
+        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl shadow-inner">
           😋
         </div>
       </header>
@@ -49,36 +74,62 @@ const App: React.FC = () => {
       {/* Quick Access to AI */}
       <div 
         onClick={() => setView('AI_CHEF')}
-        className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-6 text-white shadow-lg cursor-pointer transform transition-transform active:scale-95 flex items-center justify-between"
+        className="bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl p-6 text-white shadow-lg cursor-pointer transform transition-transform active:scale-95 flex items-center justify-between relative overflow-hidden"
       >
-        <div>
+        <div className="relative z-10">
           <h2 className="text-xl font-bold mb-1">AI 隨機推薦</h2>
           <p className="text-orange-100 text-sm">選擇困難症救星</p>
         </div>
-        <SparklesIcon className="w-10 h-10 text-white/80" />
+        <SparklesIcon className="w-10 h-10 text-white/80 relative z-10" />
+        <div className="absolute right-0 bottom-0 w-24 h-24 bg-white/10 rounded-full -mr-6 -mb-6 blur-xl"></div>
+      </div>
+
+      {/* Scenarios (New Feature) */}
+      <div>
+        <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span className="w-1 h-6 bg-orange-400 rounded-full"></span>
+            情境選食
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+            {SCENARIOS.map((scenario) => {
+                const Icon = scenario.icon;
+                return (
+                    <button
+                        key={scenario.id}
+                        onClick={() => handleOpenScenario(scenario)}
+                        className={`p-3 rounded-xl border flex items-center gap-3 transition-all hover:shadow-md active:scale-95 text-left ${scenario.color}`}
+                    >
+                        <div className="p-2 bg-white/50 rounded-full">
+                            <Icon className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <div className="font-bold text-sm">{scenario.name}</div>
+                            <div className="text-[10px] opacity-80">{scenario.description}</div>
+                        </div>
+                    </button>
+                );
+            })}
+        </div>
       </div>
 
       {/* Categories Grid */}
       <div>
-        <div className="flex justify-between items-end mb-4">
-            <h3 className="text-lg font-bold text-gray-800">分類瀏覽</h3>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
+         <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span className="w-1 h-6 bg-blue-400 rounded-full"></span>
+            全部分類
+        </h3>
+        <div className="grid grid-cols-3 gap-3">
           {Object.values(CategoryType).map((cat) => (
             <button
               key={cat}
-              onClick={() => {
-                setSelectedCategory(cat);
-                setView('CATEGORIES');
-              }}
-              className={`p-4 rounded-xl text-left border transition-all hover:shadow-md active:scale-95 flex flex-col justify-between h-24 ${CATEGORY_COLORS[cat]}`}
+              onClick={() => handleOpenCategory(cat)}
+              className={`p-3 rounded-xl text-center border transition-all hover:shadow-md active:scale-95 flex flex-col items-center gap-2 ${CATEGORY_COLORS[cat]}`}
             >
-              <span className="text-2xl mb-2">
-                 {/* Simple emoji mapping for category icon if needed, using first item's emoji as fallback or generic */}
+              <span className="text-2xl">
+                 {/* Simple emoji mapping */}
                  {INITIAL_FOODS.find(f => f.category === cat)?.emoji || '🍽️'}
               </span>
-              <span className="font-bold text-sm">{cat}</span>
+              <span className="font-bold text-xs">{cat.split('/')[0]}</span>
             </button>
           ))}
         </div>
@@ -86,9 +137,9 @@ const App: React.FC = () => {
     </div>
   );
 
-  const renderCategoryList = () => {
-    if (!selectedCategory) return null;
-    const items = getCategoryFoods(selectedCategory);
+  // Generalized List View
+  const renderFoodList = () => {
+    if (!activeList) return null;
 
     return (
       <div className="p-4 pb-24">
@@ -99,32 +150,47 @@ const App: React.FC = () => {
           >
             <ChevronLeftIcon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-bold text-gray-800 ml-2">{selectedCategory}</h1>
+          <h1 className="text-xl font-bold text-gray-800 ml-2">{activeList.title}</h1>
         </header>
 
-        <div className="space-y-3 mt-2">
-            {items.map(food => (
-              <div key={food.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                      <div className="text-3xl">{food.emoji}</div>
-                      <div>
-                          <h3 className="font-bold text-gray-800">{food.name}</h3>
-                          <div className="flex gap-2 mt-1">
-                              {food.tags.map(tag => (
-                                  <span key={tag} className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{tag}</span>
-                              ))}
+        <div className="space-y-4 mt-2">
+            {activeList.items.map(food => (
+              <div key={food.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                          <div className="text-3xl">{food.emoji}</div>
+                          <div>
+                              <h3 className="font-bold text-gray-800">{food.name}</h3>
+                              <div className="flex gap-2 mt-1 flex-wrap">
+                                  {food.tags.map(tag => (
+                                      <span key={tag} className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{tag}</span>
+                                  ))}
+                              </div>
                           </div>
                       </div>
+                      <button 
+                        onClick={() => toggleFavorite(food.id)}
+                        className={`p-2 rounded-full transition-colors ${favorites.includes(food.id) ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:bg-gray-50'}`}
+                      >
+                          <HeartIcon className="w-6 h-6" filled={favorites.includes(food.id)} />
+                      </button>
                   </div>
-                  <button 
-                    onClick={() => toggleFavorite(food.id)}
-                    className={`p-2 rounded-full transition-colors ${favorites.includes(food.id) ? 'text-red-500 bg-red-50' : 'text-gray-300 hover:bg-gray-50'}`}
-                  >
-                      <HeartIcon className="w-6 h-6" filled={favorites.includes(food.id)} />
-                  </button>
+
+                  {/* Direct Maps Link */}
+                  <div className="border-t border-gray-50 pt-2">
+                       <a 
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(food.name + ' 餐廳')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2 flex items-center justify-center gap-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                       >
+                           <MapPinIcon className="w-4 h-4" />
+                           <span>Google Maps 找餐廳</span>
+                       </a>
+                  </div>
               </div>
             ))}
-            {items.length === 0 && (
+            {activeList.items.length === 0 && (
                 <div className="text-center text-gray-400 py-10">
                     此分類暫無資料
                 </div>
@@ -155,22 +221,37 @@ const App: React.FC = () => {
                 </button>
             </div>
         ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {favItems.map(food => (
-                    <div key={food.id} className="bg-white p-4 rounded-2xl shadow-sm border border-orange-100 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="text-3xl">{food.emoji}</div>
-                            <div>
-                                <h3 className="font-bold text-gray-800">{food.name}</h3>
-                                <p className="text-xs text-gray-500">{food.category}</p>
+                    <div key={food.id} className="bg-white p-4 rounded-2xl shadow-sm border border-orange-100 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="text-3xl">{food.emoji}</div>
+                                <div>
+                                    <h3 className="font-bold text-gray-800">{food.name}</h3>
+                                    <p className="text-xs text-gray-500">{food.category}</p>
+                                </div>
                             </div>
+                            <button 
+                                onClick={() => toggleFavorite(food.id)}
+                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                                <TrashIcon className="w-5 h-5" />
+                            </button>
                         </div>
-                        <button 
-                            onClick={() => toggleFavorite(food.id)}
-                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                        >
-                            <TrashIcon className="w-5 h-5" />
-                        </button>
+                        
+                        {/* Direct Maps Link for Favorites */}
+                        <div className="border-t border-gray-50 pt-2">
+                             <a 
+                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(food.name + ' 餐廳')}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-2 flex items-center justify-center gap-2 text-sm text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+                            >
+                                <MapPinIcon className="w-4 h-4" />
+                                <span>Google Maps 找餐廳</span>
+                            </a>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -187,7 +268,7 @@ const App: React.FC = () => {
       {/* View Content */}
       <main className="h-full min-h-screen overflow-y-auto custom-scrollbar">
         {view === 'HOME' && renderHome()}
-        {view === 'CATEGORIES' && renderCategoryList()}
+        {view === 'LIST' && renderFoodList()}
         {view === 'FAVORITES' && renderFavorites()}
         {view === 'AI_CHEF' && (
             <div className="pb-24">
@@ -208,8 +289,8 @@ const App: React.FC = () => {
       {/* Bottom Navigation Bar */}
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 backdrop-blur-md border-t border-gray-100 flex justify-around items-center py-3 px-2 z-50">
         <button 
-            onClick={() => { setView('HOME'); setSelectedCategory(null); }}
-            className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${view === 'HOME' || view === 'CATEGORIES' ? 'text-orange-600' : 'text-gray-400'}`}
+            onClick={() => { setView('HOME'); setActiveList(null); }}
+            className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${view === 'HOME' || view === 'LIST' ? 'text-orange-600' : 'text-gray-400'}`}
         >
             <HomeIcon className="w-6 h-6" />
             <span className="text-[10px] font-bold">首頁</span>

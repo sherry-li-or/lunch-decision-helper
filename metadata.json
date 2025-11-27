@@ -1,5 +1,7 @@
 {
   "name": "LunchMate AI",
   "description": "An intelligent lunch decision helper that categorizes food options, manages favorites, and uses Gemini AI to suggest the perfect meal based on your mood.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "geolocation"
+  ]
 }

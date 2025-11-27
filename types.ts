@@ -17,10 +17,19 @@ export interface FoodItem {
   description?: string;
 }
 
-export type ViewState = 'HOME' | 'CATEGORIES' | 'FAVORITES' | 'AI_CHEF';
+export type ViewState = 'HOME' | 'LIST' | 'FAVORITES' | 'AI_CHEF';
 
 export interface AISuggestion {
   foodName: string;
   reason: string;
   mood: string;
+}
+
+export interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  filterTag: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
 }
